@@ -1,104 +1,138 @@
 import requests
 from bs4 import BeautifulSoup
-import pandas as pd
-from urllib.parse import urljoin
-import ssl
-import os
-
-# Отключение проверки SSL (если есть проблемы с сертификатом)
-ssl._create_default_https_context = ssl._create_unverified_context
-
-# Конфигурация
-BASE_URL = 'http://185.244.219.162/phpmyadmin/'
-LOGIN_URL = urljoin(BASE_URL, 'index.php')
-DB_NAME = 'testDB'
-TABLE_NAME = 'users'
-USERNAME = 'test'
-PASSWORD = 'JHFBdsyf2eg8*'
-
-# Эмуляция браузера для Windows 11
-headers = {
-    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-    'Accept-Language': 'ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7',
-    'Connection': 'keep-alive',
-    'Upgrade-Insecure-Requests': '1'
-}
-
-session = requests.Session()
 
 
-def save_debug_file(filename, content):
-    """Сохраняет файл для отладки"""
-    debug_dir = "debug"
-    if not os.path.exists(debug_dir):
-        os.makedirs(debug_dir)
-    with open(os.path.join(debug_dir, filename), 'w', encoding='utf-8') as f:
-        f.write(content)
+def main():
+    USERNAME = 'test'
+    PASSWORD = 'JHFBdsyf2eg8*'
 
+    session = requests.Session()
 
-try:
-    # 1. Получаем начальную страницу для токена и кук
-    print("1. Получение начальной страницы...")
-    response = session.get(BASE_URL, headers=headers)
-    response.raise_for_status()
-    save_debug_file("initial_page.html", response.text)
-
-    # 2. Анализ формы входа
+    # Получаем страницу входа для извлечения скрытых полей
+    login_page_url = "http://185.244.219.162/phpmyadmin/index.php"
+    response = session.get(login_page_url)
     soup = BeautifulSoup(response.text, 'html.parser')
+
+    # Находим форму входа
     login_form = soup.find('form', {'id': 'login_form'})
     if not login_form:
-        raise Exception("Форма входа не найдена!")
+        print("Не удалось найти форму входа")
+        return
 
-    # Собираем ВСЕ скрытые поля формы
-    form_data = {
+    # Извлекаем все скрытые поля из формы
+    hidden_fields = {}
+    for hidden in login_form.find_all('input', {'type': 'hidden'}):
+        if 'name' in hidden.attrs and 'value' in hidden.attrs:
+            hidden_fields[hidden['name']] = hidden['value']
+
+    # Добавляем учетные данные
+    auth_data = {
         'pma_username': USERNAME,
         'pma_password': PASSWORD,
-        'server': '1',
-        'target': 'index.php'
+        'server': '1'
     }
 
-    for input_tag in login_form.find_all('input', type='hidden'):
-        if input_tag.get('name') and input_tag.get('value'):
-            form_data[input_tag['name']] = input_tag['value']
+    # Объединяем скрытые поля и учетные данные
+    post_data = {**hidden_fields, **auth_data}
 
-    print(f"2. Данные для авторизации: { {k: v for k, v in form_data.items() if k != 'pma_password'} }")
+    # Определяем URL для отправки формы
+    form_action = login_form.get('action', 'index.php')
+    if form_action.startswith('/'):
+        post_url = "http://185.244.219.162" + form_action
+    else:
+        post_url = "http://185.244.219.162/phpmyadmin/" + form_action
 
-    # 3. Отправка формы входа
-    print("3. Отправка данных авторизации...")
-    auth_headers = headers.copy()
-    auth_headers.update({
-        'Content-Type': 'application/x-www-form-urlencoded',
-        'Referer': BASE_URL,
-        'Origin': BASE_URL
-    })
+    print(f"Отправляем запрос на: {post_url}")
 
-    response = session.post(LOGIN_URL, headers=auth_headers, data=form_data)
-    save_debug_file("auth_response.html", response.text)
+    # Выполняем авторизацию
+    response = session.post(post_url, data=post_data)
 
-    # 4. Проверка успешности авторизации
-    if response.status_code != 200:
-        raise Exception(f"HTTP ошибка: {response.status_code}")
+    # Проверяем успешность авторизации по кукам
+    if 'pmaAuth-1' not in session.cookies.get_dict():
+        print("Ошибка авторизации! Куки аутентификации не установлены.")
+        return
 
-    if 'mainFrameset' not in response.text and 'navigation.php' not in response.text:
-        # Дополнительные проверки для диагностики
-        if 'Access denied' in response.text:
-            raise Exception("Доступ запрещён. Неверные учётные данные или IP заблокирован")
-        elif 'Too many login' in response.text:
-            raise Exception("Слишком много неудачных попыток входа")
-        else:
-            raise Exception("Неизвестная ошибка авторизации. Проверьте debug/auth_response.html")
+    print("Авторизация успешна!")
 
-    print("4. Авторизация успешна!")
+    # Получаем главную страницу для извлечения токена
+    main_page = session.get("http://185.244.219.162/phpmyadmin/index.php")
+    soup = BeautifulSoup(main_page.text, 'html.parser')
 
-    # Дальнейший код для получения данных таблицы...
-    # (остаётся без изменений из предыдущего скрипта)
+    # Ищем токен безопасности
+    token = None
+    token_input = soup.find('input', {'name': 'token'})
+    if token_input:
+        token = token_input['value']
+    else:
+        for hidden in soup.find_all('input', {'type': 'hidden'}):
+            if hidden.get('name') == 'token':
+                token = hidden['value']
+                break
 
-except Exception as e:
-    print(f"Ошибка: {e}")
-    print("\nРекомендации по диагностике:")
-    print("1. Проверьте файлы в папке debug/")
-    print("2. Попробуйте авторизоваться вручную через браузер")
-    print("3. Проверьте правильность логина/пароля")
-    print("4. Временно отключите антивирус и брандмауэр")
-    exit(1)
+    if not token:
+        print("Не удалось найти токен безопасности")
+        return
+
+    # URL для доступа к таблице users
+    table_url = "http://185.244.219.162/phpmyadmin/sql.php"
+
+    # Параметры запроса для получения данных таблицы
+    params = {
+        'db': 'testDB',
+        'table': 'users',
+        'pos': 0,
+        'token': token,
+        'server': '1'
+    }
+
+    # Получаем страницу с данными таблицы
+    response = session.get(table_url, params=params)
+    soup = BeautifulSoup(response.text, 'html.parser')
+
+    # Ищем таблицу с данными
+    table = soup.find('table', {'id': 'table_results'})
+    if not table:
+        table = soup.find('table', {'class': 'data'})
+    if not table:
+        print("Не удалось найти таблицу с данными")
+        return
+
+    # Извлекаем заголовки таблицы
+    headers = []
+    header_row = table.find('thead')
+    if header_row:
+        header_row = header_row.find('tr')
+    else:
+        header_row = table.find('tr')
+
+    if header_row:
+        for th in header_row.find_all('th'):
+            headers.append(th.get_text(strip=True))
+
+    # Извлекаем строки данных
+    data_rows = []
+    tbody = table.find('tbody')
+    if tbody:
+        rows = tbody.find_all('tr')
+    else:
+        rows = table.find_all('tr')
+        if header_row and rows and rows[0] == header_row:
+            rows = rows[1:]
+
+    for row in rows:
+        cells = row.find_all('td')
+        row_data = [cell.get_text(strip=True) for cell in cells]
+        if row_data:
+            data_rows.append(row_data)
+
+    # Выводим данные в консоль
+    print("\nДанные из таблицы 'users':")
+    if headers:
+        print(" | ".join(headers))
+        print("-" * 50)
+    for row in data_rows:
+        print(" | ".join(row))
+
+
+if __name__ == "__main__":
+    main()

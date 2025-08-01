@@ -1,0 +1,54 @@
+<table class="pma-table navigation nospacing nopadding print_ignore">
+<tr>
+<td class="navigation_separator"></td>
+<td>
+<form action="index.php?route=/sql" method="post">
+<input name="db" type="hidden" value="testDB"/><input name="table" type="hidden" value="users"/><input name="server" type="hidden" value="1"/><input name="sql_query" type="hidden" value="SELECT * FROM `users` ORDER BY `id` ASC "/><input name="is_browse_distinct" type="hidden" value=""/><input name="goto" type="hidden" value=""/><input name="session_max_rows" type="hidden" value="all"/><input name="pos" type="hidden" value="0"/><input name="token" type="hidden" value="3337707a4a2261492d7f2f325d432b39"/>
+<input class="showAllRows" id="showAll_78065225" name="navig" type="checkbox" value="all"/>
+<label for="showAll_78065225">Show all</label>
+</form>
+</td>
+<td><div class="navigation_separator">|</div></td>
+<td>
+<div class="save_edited hide">
+<input class="btn btn-link" type="submit" value="Save edited data"/>
+<div class="navigation_separator">|</div>
+</div>
+</td>
+<td>
+<div class="restore_column hide">
+<input class="btn btn-link" type="submit" value="Restore column order"/>
+<div class="navigation_separator">|</div>
+</div>
+</td>
+<td class="navigation_goto">
+<form action="index.php?route=/sql" id="maxRowsForm" method="post">
+<input name="db" type="hidden" value="testDB"/><input name="table" type="hidden" value="users"/><input name="server" type="hidden" value="1"/><input name="sql_query" type="hidden" value="SELECT * FROM `users` ORDER BY `id` ASC "/><input name="is_browse_distinct" type="hidden" value=""/><input name="goto" type="hidden" value=""/><input name="pos" type="hidden" value="0"/><input name="unlim_num_rows" type="hidden" value="4"/><input name="token" type="hidden" value="3337707a4a2261492d7f2f325d432b39"/>
+<label for="sessionMaxRowsSelect">Number of rows:</label>
+<select class="autosubmit" id="sessionMaxRowsSelect" name="session_max_rows">
+<option selected="" value="25">25</option>
+<option value="50">50</option>
+<option value="100">100</option>
+<option value="250">250</option>
+<option value="500">500</option>
+</select>
+</form>
+</td>
+<td class="navigation_separator"></td>
+<td class="largescreenonly">
+<span>Filter rows:</span>
+<input class="filter_rows" data-for="78065225" placeholder="Search this table" type="text"/>
+</td>
+<td class="largescreenonly">
+<form action="index.php?route=/sql" class="print_ignore" method="post">
+<input name="db" type="hidden" value="testDB"/><input name="table" type="hidden" value="users"/><input name="server" type="hidden" value="1"/><input name="sort_by_key" type="hidden" value="1"/><input name="session_max_rows" type="hidden" value="25"/><input name="token" type="hidden" value="3337707a4a2261492d7f2f325d432b39"/>
+  Sort by key:  <select class="autosubmit" name="sql_query">
+<option selected="" value="SELECT * FROM `users`   ORDER BY `id` ASC">PRIMARY (ASC)</option>
+<option value="SELECT * FROM `users`   ORDER BY `id` DESC">PRIMARY (DESC)</option>
+<option value="SELECT * FROM `users`  ">None</option>
+</select>
+</form>
+</td>
+<td class="navigation_separator"></td>
+</tr>
+</table>
