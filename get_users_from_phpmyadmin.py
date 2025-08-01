@@ -1,10 +1,12 @@
 import requests
 from bs4 import BeautifulSoup
+import csv
+import os
 
 
 def main():
-    USERNAME = 'test'
-    PASSWORD = 'JHFBdsyf2eg8*'
+    USERNAME = '****'
+    PASSWORD = '***********'
 
     session = requests.Session()
 
@@ -42,8 +44,6 @@ def main():
     else:
         post_url = "http://185.244.219.162/phpmyadmin/" + form_action
 
-    print(f"Отправляем запрос на: {post_url}")
-
     # Выполняем авторизацию
     response = session.post(post_url, data=post_data)
 
@@ -73,40 +73,65 @@ def main():
         print("Не удалось найти токен безопасности")
         return
 
-    # URL для доступа к таблице users
-    table_url = "http://185.244.219.162/phpmyadmin/sql.php"
+    # Используем правильный URL для доступа к таблице users
+    table_url = "http://185.244.219.162/phpmyadmin/index.php"
 
     # Параметры запроса для получения данных таблицы
     params = {
+        'route': '/sql',
+        'server': '1',
         'db': 'testDB',
         'table': 'users',
-        'pos': 0,
-        'token': token,
-        'server': '1'
+        'pos': '0',
+        'token': token
     }
 
     # Получаем страницу с данными таблицы
     response = session.get(table_url, params=params)
     soup = BeautifulSoup(response.text, 'html.parser')
 
-    # Ищем таблицу с данными
+    # Ищем таблицу с данными несколькими способами
+    table = None
+
+    # Способ 1: Поиск по id
     table = soup.find('table', {'id': 'table_results'})
+
+    # Способ 2: Поиск по классу
     if not table:
         table = soup.find('table', {'class': 'data'})
+
+    # Способ 3: Поиск по содержимому (ищем таблицу с известными именами пользователей)
+    if not table:
+        all_tables = soup.find_all('table')
+        for t in all_tables:
+            table_text = t.get_text()
+            if any(name in table_text for name in ['Иван', 'Петр', 'Василий', 'Алексей']):
+                table = t
+                break
+
+    # Способ 4: Поиск по классу Bootstrap
+    if not table:
+        table = soup.find('table', {'class': 'table table-striped table-hover'})
+
     if not table:
         print("Не удалось найти таблицу с данными")
         return
 
     # Извлекаем заголовки таблицы
     headers = []
-    header_row = table.find('thead')
-    if header_row:
-        header_row = header_row.find('tr')
-    else:
+    header_row = None
+
+    # Ищем заголовки в thead
+    thead = table.find('thead')
+    if thead:
+        header_row = thead.find('tr')
+
+    # Если thead нет, ищем первую строку таблицы
+    if not header_row:
         header_row = table.find('tr')
 
     if header_row:
-        for th in header_row.find_all('th'):
+        for th in header_row.find_all(['th', 'td']):
             headers.append(th.get_text(strip=True))
 
     # Извлекаем строки данных
@@ -116,6 +141,7 @@ def main():
         rows = tbody.find_all('tr')
     else:
         rows = table.find_all('tr')
+        # Пропускаем заголовок, если он был найден
         if header_row and rows and rows[0] == header_row:
             rows = rows[1:]
 
@@ -132,6 +158,63 @@ def main():
         print("-" * 50)
     for row in data_rows:
         print(" | ".join(row))
+
+    # Сохраняем данные в CSV файл (можно открыть в Excel)
+    save_to_csv(headers, data_rows)
+
+    # Сохраняем данные в Excel файл (требуется openpyxl)
+    try:
+        save_to_excel(headers, data_rows)
+    except ImportError:
+        print("\nДля сохранения в Excel установите библиотеку openpyxl: pip install openpyxl")
+
+
+def save_to_csv(headers, data_rows):
+    """Сохраняет данные в CSV файл"""
+    filename = 'users_data.csv'
+    with open(filename, 'w', newline='', encoding='utf-8-sig') as csvfile:
+        writer = csv.writer(csvfile)
+        if headers:
+            writer.writerow(headers)
+        writer.writerows(data_rows)
+    print(f"\nДанные сохранены в файл: {os.path.abspath(filename)}")
+
+
+def save_to_excel(headers, data_rows):
+    """Сохраняет данные в Excel файл"""
+    try:
+        import openpyxl
+    except ImportError:
+        raise ImportError("Библиотека openpyxl не установлена")
+
+    filename = 'users_data.xlsx'
+    workbook = openpyxl.Workbook()
+    sheet = workbook.active
+    sheet.title = "Users Data"
+
+    # Записываем заголовки
+    if headers:
+        sheet.append(headers)
+
+    # Записываем данные
+    for row in data_rows:
+        sheet.append(row)
+
+    # Автоматическая ширина столбцов
+    for column in sheet.columns:
+        max_length = 0
+        column_letter = column[0].column_letter
+        for cell in column:
+            try:
+                if len(str(cell.value)) > max_length:
+                    max_length = len(str(cell.value))
+            except:
+                pass
+        adjusted_width = (max_length + 2)
+        sheet.column_dimensions[column_letter].width = adjusted_width
+
+    workbook.save(filename)
+    print(f"Данные сохранены в Excel файл: {os.path.abspath(filename)}")
 
 
 if __name__ == "__main__":

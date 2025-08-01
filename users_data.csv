@@ -1,0 +1,5 @@
+﻿,id1,name,
+,Edit,Copy,DeleteDELETE FROM `users` WHERE `users`.`id` = 1,1,Иван
+,Edit,Copy,DeleteDELETE FROM `users` WHERE `users`.`id` = 2,2,Пётр
+,Edit,Copy,DeleteDELETE FROM `users` WHERE `users`.`id` = 3,3,Василий
+,Edit,Copy,DeleteDELETE FROM `users` WHERE `users`.`id` = 4,4,Алексей
