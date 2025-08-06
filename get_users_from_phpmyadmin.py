@@ -5,8 +5,8 @@ import os
 
 
 def main():
-    USERNAME = '****' # Введите Ваш логин
-    PASSWORD = '***********' # Введите Ваш пароль
+    USERNAME = '****' # Введите логин
+    PASSWORD = '***********' # Введите пароль
 
     session = requests.Session()
 
